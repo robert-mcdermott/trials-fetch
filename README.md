@@ -34,8 +34,8 @@ uv run trials-fetch --condition "type 1 diabetes" --age 12 --site-status RECRUIT
 # Specific trials by NCT ID, piped to another tool
 uv run trials-fetch --nct-ids NCT04280705 NCT00000620 -o - -q | jq '.studies[] | {nct_id, brief_title, overall_status}'
 
-# Weekly monitoring into a SQLite database (only trials updated since the last run)
-uv run trials-fetch --condition melanoma --status RECRUITING --since-last-run melanoma.state.json -o melanoma.sqlite
+# Weekly monitoring into a SQLite database (after the first run, only trials updated since the last run)
+uv run trials-fetch --condition melanoma --max-results all --since-last-run melanoma.state.json -o melanoma.sqlite
 
 # Download protocols and statistical analysis plans
 uv run trials-fetch --condition glioblastoma --has-results --download-documents docs --document-types protocol sap
@@ -104,7 +104,7 @@ Many dates are estimates for trials that haven't reached them (`start_date_type`
 
 - `--raw` writes the API's own study objects unchanged (JSON or JSONL), including the full results section, which normalized records leave out. `--fields` limits raw output to some API fields or sections (e.g. `--fields BriefTitle OverallStatus ResultsSection`; field names are listed in the [data structure reference](https://clinicaltrials.gov/data-api/about-api/study-data-structure)).
 - `--merge` updates an existing file, replacing records with the same NCT ID (json, jsonl, csv).
-- `--resume` continues an interrupted run, skipping NCT IDs already in the output and appending the rest (jsonl, csv, sqlite, json).
+- `--resume` continues an interrupted run, skipping NCT IDs already in the output and appending the rest (jsonl, csv, sqlite, json). It still downloads them; it only saves rewriting them.
 - `--summary FILE` writes the run's `search_info` as JSON (`-` for stdout), which is handy for orchestration tools.
 
 Progress and diagnostics go to stderr (`-q` for warnings and errors only, `-v` for debug output). The human-readable listing goes to stdout unless `-q` is given or the data itself is written to stdout.
@@ -250,7 +250,13 @@ print(trials.pivot_table(index="start_year", columns="lead_sponsor_class", value
 EOF
 ```
 
-To keep the database current, run the same search on a schedule with `--since-last-run` (see [Incremental runs](#incremental-runs)).
+To keep the database current, run the search on a schedule with `--since-last-run` (see [Incremental runs](#incremental-runs)). It can't be combined with `--date-from`, so move the start-date limit into `--advanced`:
+```bash
+uv run trials-fetch --condition "ovarian cancer" --study-type interventional \
+  --advanced 'AREA[StartDate]RANGE[2015-01-01, MAX]' --max-results all \
+  --since-last-run ovarian.state.json -o ovarian.sqlite
+```
+The first run fetches every match; in testing, a second run fetched 8 trials instead of 2,521.
 
 ### Linking to PubMed
 `references[].pmid` holds the PubMed IDs of a trial's publications. They can be fetched with [pubmed-fetch](https://github.com/robert-mcdermott/pubmed-fetch), e.g. for abstracts and citation metrics of results papers:
@@ -264,7 +270,13 @@ uv run trials-fetch --nct-ids NCT00000620 -o - -q \
 `--download-documents DIR` downloads the protocols (`protocol`), statistical analysis plans (`sap`) and informed consent forms (`icf`) that sponsors uploaded, into `DIR/<NCT ID>/<filename>` (usually PDF). `--document-types` picks which ones; a file containing several (e.g. `Prot_SAP_000.pdf`) is downloaded if any of them is wanted. Files already present with the expected size are skipped, so reruns are cheap. Each downloaded document's `path` is recorded in the output. About three quarters of the trials with documents have posted results (`--has-results` finds them), and files can be several MB each, so start with a small `--max-results`.
 
 ## Incremental runs
-`--since-last-run STATE` fetches only trials updated (`last_update`, unless `--date-field` says otherwise) since the end date stored in the STATE file, then updates the file after a complete run. The first run has no date limit (unless you give `--days`), so it collects everything that currently matches as a baseline. Runs overlap by one day so nothing posted late is missed; use SQLite output, `--merge` or `--resume` to de-duplicate. The state is not advanced when a page failed or when `--max-results` cut the results, since that would skip trials.
+`--since-last-run STATE` fetches only trials updated (`last_update`, unless `--date-field` says otherwise) since the end date stored in the STATE file, then updates the file after a complete run. Updates include newly registered trials and changes to existing ones, such as a new status, new sites or posted results. The first run has no date limit (unless you give `--days`), so it collects everything that currently matches as a baseline.
+
+- **Write to SQLite, or use `--merge`,** so updated trials replace their old records. Runs overlap by one day so nothing posted late is missed, and the overlap is de-duplicated the same way. Don't use `--resume` here: it skips trials already in the output, so their updates would be dropped.
+- **Use `--max-results all`** (or a cap above the number of matches). The state is not advanced when a page failed or when `--max-results` cut the results, since that would skip trials, so a capped search would fetch the same window on every run.
+- **Don't filter on status in a monitored search.** Each run fetches only trials that match the search *now*. A trial that stops matching is never fetched again, so the database keeps its old values: under `--status RECRUITING`, a trial that moves to `COMPLETED` still shows as recruiting, and under `--no-results`, a trial that posts results still shows none. Leave `--status`, `--site-status`, `--has-results` and `--no-results` out of the monitored search and apply them when you query, e.g. `WHERE overall_status = 'RECRUITING'`. Search fields like `--condition` and `--intervention` rarely change during a trial, so they are safe to monitor.
+
+`--since-last-run` can't be combined with `--date-from`; to limit trials by another date as well, use `--advanced`, e.g. `'AREA[StartDate]RANGE[2015-01-01, MAX]'`.
 
 ## Using a config file (INI)
 All options can go in a `[search]` section; see [sample_config.ini](sample_config.ini), or generate one with `uv run trials-fetch --create-config my_config.ini` (it won't overwrite an existing file). Lists are comma-separated and/or one per line; quote values that contain commas:

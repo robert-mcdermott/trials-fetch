@@ -129,13 +129,18 @@ jq -r '.documents[] | select(.path) | .path' /tmp/doc.jsonl
 ```
 Documents are usually PDFs; many trials have none (`documents` is empty).
 
-**"Track new and changed melanoma trials every week"**
+**"Track new and changed recruiting melanoma trials every week"**
 ```bash
-trials-fetch --condition melanoma --status RECRUITING NOT_YET_RECRUITING --since-last-run ~/trials/melanoma.state.json \
-  --output ~/trials/melanoma.sqlite -q --summary - | jq '{filters: .filters.date_from, total_found, total_studies, complete}'
+trials-fetch --condition melanoma --max-results all --since-last-run ~/trials/melanoma.state.json \
+  --output ~/trials/melanoma.sqlite -q --summary - | jq '{since: .filters.date_from, retrieved, total_studies, complete}'
+sqlite3 -header -column ~/trials/melanoma.sqlite \
+  "SELECT nct_id, overall_status, last_update_posted, brief_title FROM studies
+   WHERE overall_status IN ('RECRUITING', 'NOT_YET_RECRUITING') ORDER BY last_update_posted DESC LIMIT 20;"
 ```
-- The first run collects every current match as a baseline. Later runs fetch trials updated since the last run (`last_update`), with a one-day overlap.
-- The state only advances after a complete, uncapped run, so use `--max-results all` or a large cap.
+- The first run collects every current match as a baseline. Later runs fetch only trials updated since the last run (`last_update`), with a one-day overlap, and SQLite replaces their old records.
+- **Filter on status in SQL, not in the monitored search.** A monitored search with `--status`, `--site-status`, `--has-results` or `--no-results` never refetches trials that stop matching, so a trial that completes or posts results keeps its old values in the database.
+- Use `--max-results all`: the state only advances after a complete, uncapped run. Use SQLite or `--merge`, never `--resume`, which would drop the updates.
+- To also limit by another date, use `--advanced 'AREA[StartDate]RANGE[2020-01-01, MAX]'` (`--date-from` can't be combined with `--since-last-run`).
 
 ## 6. Reading results efficiently
 
@@ -160,6 +165,7 @@ For SQLite, see the tables and example queries in [reference.md](reference.md). 
 
 - **Values within one option are ORed.** To require two conditions, put one in `--condition` and the other in `--advanced 'AREA[Condition]...'`, or use the positional term with `AND`.
 - `--status RECRUITING --country X` doesn't mean the site in X is recruiting; use `--site-status`.
+- With `--since-last-run`, don't filter on status or results in the search (the database goes stale as trials stop matching); filter in SQL instead.
 - Dates in the future are estimates (`*_date_type: ESTIMATED`), and some dates are only `YYYY-MM`.
 - Free-text searches match synonyms and related text broadly (e.g. "ovarian cancer" also matches breast cancer trials mentioning "ovarian function suppression"). Check `conditions`/`condition_mesh` before drawing conclusions, and filter further if needed.
 - Drug names vary in spelling and brand; aggregate with `intervention_mesh` / the `mesh` table.
