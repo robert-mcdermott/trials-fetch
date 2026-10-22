@@ -1,4 +1,4 @@
-# Fetch Trials Utility
+# Trials Fetch
 
 This Python utility fetches clinical trials from the ClinicalTrials.gov API based on search terms and saves them in JSON format.
 
@@ -17,7 +17,7 @@ Dependencies are managed via `uv add`.
 Run the script using UV:
 
 ```bash
-uv run python fetch_trials.py "search term" -o output.json --status STATUS
+uv run python trials-fetch.py "search term" -o output.json --status STATUS
 ```
 
 - `search term`: The term to search for (e.g., "diabetes").
@@ -28,7 +28,7 @@ uv run python fetch_trials.py "search term" -o output.json --status STATUS
 For help:
 
 ```bash
-uv run python fetch_trials.py --help
+uv run python trials-fetch.py --help
 ```
 
 The API used is from [ClinicalTrials.gov Data API](https://clinicaltrials.gov/data-api/api).
