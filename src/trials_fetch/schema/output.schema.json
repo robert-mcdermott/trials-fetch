@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/robert-mcdermott/trials-fetch/schema/output.schema.json",
+  "title": "trials-fetch output",
+  "description": "A JSON output document (schema_version 1). JSONL output contains one $defs/study per line. With --raw, studies are the API's own objects instead.",
+  "type": "object",
+  "required": ["schema_version", "search_info", "studies"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "search_info": {"$ref": "#/$defs/search_info"},
+    "studies": {"type": "array", "items": {"$ref": "#/$defs/study"}}
+  },
+  "$defs": {
+    "str": {"type": ["string", "null"]},
+    "int": {"type": ["integer", "null"]},
+    "num": {"type": ["number", "null"]},
+    "bool": {"type": ["boolean", "null"]},
+    "date": {"type": ["string", "null"], "pattern": "^\\d{4}(-\\d{2}(-\\d{2})?)?$"},
+    "date_type": {"enum": ["ACTUAL", "ESTIMATED", null]},
+    "strings": {"type": "array", "items": {"type": "string"}},
+    "org": {
+      "type": "object",
+      "required": ["name", "class"],
+      "additionalProperties": false,
+      "properties": {"name": {"type": "string"}, "class": {"$ref": "#/$defs/str"}}
+    },
+    "mesh": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "term"],
+        "additionalProperties": false,
+        "properties": {"id": {"$ref": "#/$defs/str"}, "term": {"$ref": "#/$defs/str"}}
+      }
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["measure", "description", "time_frame"],
+        "additionalProperties": false,
+        "properties": {
+          "measure": {"$ref": "#/$defs/str"},
+          "description": {"$ref": "#/$defs/str"},
+          "time_frame": {"$ref": "#/$defs/str"}
+        }
+      }
+    },
+    "search_info": {
+      "type": "object",
+      "description": "Provenance and completeness of the run that produced the output.",
+      "required": ["tool", "generated_on", "source", "complete", "failed_batches", "total_studies"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "type": "object",
+          "required": ["name", "version"],
+          "additionalProperties": false,
+          "properties": {"name": {"type": "string"}, "version": {"type": "string"}}
+        },
+        "schema_version": {"const": 1},
+        "generated_on": {"type": "string", "description": "UTC ISO-8601 timestamp"},
+        "api_version": {"$ref": "#/$defs/str", "description": "ClinicalTrials.gov API version"},
+        "data_timestamp": {"$ref": "#/$defs/str", "description": "When ClinicalTrials.gov last refreshed its data"},
+        "source": {"enum": ["search", "ids", "raw"]},
+        "query": {
+          "type": "object",
+          "description": "The API parameters sent (query.*, filter.*)",
+          "additionalProperties": {"type": "string"}
+        },
+        "filters": {"type": "object", "description": "The QuerySpec, with the date range resolved"},
+        "sort": {"$ref": "#/$defs/str"},
+        "raw": {"type": "boolean", "description": "True if studies are the API's own objects (--raw)"},
+        "raw_file": {"type": "string"},
+        "max_results": {"$ref": "#/$defs/int", "description": "null means no limit"},
+        "total_found": {"$ref": "#/$defs/int", "description": "Studies matching the search (or NCT IDs requested)"},
+        "expected": {"$ref": "#/$defs/int", "description": "Studies this run tried to retrieve"},
+        "retrieved": {"type": "integer", "description": "Studies retrieved in this run"},
+        "truncated": {"type": "boolean", "description": "True if max_results cut the results"},
+        "missing_ids": {"$ref": "#/$defs/strings", "description": "Requested NCT IDs that don't exist"},
+        "skipped_records": {"type": "integer", "description": "Studies that could not be parsed"},
+        "skipped_existing": {"type": "integer", "description": "Studies skipped by --resume"},
+        "complete": {"type": "boolean", "description": "False if any batch failed"},
+        "failed_batches": {"type": "array", "items": {"type": "object"}},
+        "downloads": {
+          "type": "object",
+          "required": ["downloaded", "failed"],
+          "additionalProperties": false,
+          "properties": {"downloaded": {"type": "integer"}, "failed": {"type": "integer"}}
+        },
+        "total_studies": {"type": "integer", "description": "Studies in the output file or database"}
+      }
+    },
+    "study": {
+      "type": "object",
+      "description": "One clinical trial record. Missing values are null; lists are empty.",
+      "additionalProperties": false,
+      "required": [
+        "nct_id", "url", "nct_id_aliases", "org_study_id", "secondary_ids", "brief_title", "official_title",
+        "acronym", "overall_status", "last_known_status", "why_stopped", "status_verified_date",
+        "start_date", "start_date_type", "primary_completion_date", "primary_completion_date_type",
+        "completion_date", "completion_date_type", "first_submitted", "first_posted", "last_update_posted",
+        "results_first_posted", "has_results", "study_type", "phases", "allocation", "intervention_model",
+        "primary_purpose", "masking", "observational_model", "time_perspective", "enrollment", "enrollment_type",
+        "conditions", "keywords", "condition_mesh", "interventions", "intervention_mesh", "arms",
+        "primary_outcomes", "secondary_outcomes", "other_outcomes", "eligibility_criteria", "sex", "minimum_age",
+        "maximum_age", "std_ages", "healthy_volunteers", "lead_sponsor", "collaborators", "officials",
+        "central_contacts", "locations", "countries", "brief_summary", "detailed_description", "references",
+        "documents", "is_fda_regulated_drug", "is_fda_regulated_device", "ipd_sharing"
+      ],
+      "properties": {
+        "nct_id": {"type": "string", "pattern": "^NCT\\d{8}$"},
+        "url": {"type": "string"},
+        "nct_id_aliases": {"$ref": "#/$defs/strings", "description": "Former NCT IDs merged into this record"},
+        "org_study_id": {"$ref": "#/$defs/str"},
+        "secondary_ids": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type"],
+            "additionalProperties": false,
+            "properties": {"id": {"$ref": "#/$defs/str"}, "type": {"$ref": "#/$defs/str"}}
+          }
+        },
+        "brief_title": {"$ref": "#/$defs/str"},
+        "official_title": {"$ref": "#/$defs/str"},
+        "acronym": {"$ref": "#/$defs/str"},
+        "overall_status": {"$ref": "#/$defs/str"},
+        "last_known_status": {"$ref": "#/$defs/str", "description": "Set when overall_status is UNKNOWN"},
+        "why_stopped": {"$ref": "#/$defs/str"},
+        "status_verified_date": {"$ref": "#/$defs/date"},
+        "start_date": {"$ref": "#/$defs/date"},
+        "start_date_type": {"$ref": "#/$defs/date_type"},
+        "primary_completion_date": {"$ref": "#/$defs/date"},
+        "primary_completion_date_type": {"$ref": "#/$defs/date_type"},
+        "completion_date": {"$ref": "#/$defs/date"},
+        "completion_date_type": {"$ref": "#/$defs/date_type"},
+        "first_submitted": {"$ref": "#/$defs/date"},
+        "first_posted": {"$ref": "#/$defs/date"},
+        "last_update_posted": {"$ref": "#/$defs/date"},
+        "results_first_posted": {"$ref": "#/$defs/date"},
+        "has_results": {"type": "boolean"},
+        "study_type": {"$ref": "#/$defs/str"},
+        "phases": {"$ref": "#/$defs/strings"},
+        "allocation": {"$ref": "#/$defs/str"},
+        "intervention_model": {"$ref": "#/$defs/str"},
+        "primary_purpose": {"$ref": "#/$defs/str"},
+        "masking": {"$ref": "#/$defs/str"},
+        "observational_model": {"$ref": "#/$defs/str"},
+        "time_perspective": {"$ref": "#/$defs/str"},
+        "enrollment": {"$ref": "#/$defs/int"},
+        "enrollment_type": {"$ref": "#/$defs/date_type"},
+        "conditions": {"$ref": "#/$defs/strings"},
+        "keywords": {"$ref": "#/$defs/strings"},
+        "condition_mesh": {"$ref": "#/$defs/mesh"},
+        "interventions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "name", "description", "other_names", "arm_group_labels"],
+            "additionalProperties": false,
+            "properties": {
+              "type": {"$ref": "#/$defs/str"},
+              "name": {"$ref": "#/$defs/str"},
+              "description": {"$ref": "#/$defs/str"},
+              "other_names": {"$ref": "#/$defs/strings"},
+              "arm_group_labels": {"$ref": "#/$defs/strings"}
+            }
+          }
+        },
+        "intervention_mesh": {"$ref": "#/$defs/mesh"},
+        "arms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "type", "description", "interventions"],
+            "additionalProperties": false,
+            "properties": {
+              "label": {"$ref": "#/$defs/str"},
+              "type": {"$ref": "#/$defs/str"},
+              "description": {"$ref": "#/$defs/str"},
+              "interventions": {"$ref": "#/$defs/strings"}
+            }
+          }
+        },
+        "primary_outcomes": {"$ref": "#/$defs/outcomes"},
+        "secondary_outcomes": {"$ref": "#/$defs/outcomes"},
+        "other_outcomes": {"$ref": "#/$defs/outcomes"},
+        "eligibility_criteria": {"$ref": "#/$defs/str"},
+        "sex": {"enum": ["ALL", "FEMALE", "MALE", null]},
+        "minimum_age": {"$ref": "#/$defs/str", "description": "e.g. \"18 Years\", \"6 Months\""},
+        "maximum_age": {"$ref": "#/$defs/str"},
+        "std_ages": {"$ref": "#/$defs/strings"},
+        "healthy_volunteers": {"$ref": "#/$defs/bool"},
+        "lead_sponsor": {"anyOf": [{"$ref": "#/$defs/org"}, {"type": "null"}]},
+        "collaborators": {"type": "array", "items": {"$ref": "#/$defs/org"}},
+        "officials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "affiliation", "role"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"$ref": "#/$defs/str"},
+              "affiliation": {"$ref": "#/$defs/str"},
+              "role": {"$ref": "#/$defs/str"}
+            }
+          }
+        },
+        "central_contacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "role", "phone", "email"],
+            "additionalProperties": false,
+            "properties": {
+              "name": {"$ref": "#/$defs/str"},
+              "role": {"$ref": "#/$defs/str"},
+              "phone": {"$ref": "#/$defs/str"},
+              "email": {"$ref": "#/$defs/str"}
+            }
+          }
+        },
+        "locations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["facility", "status", "city", "state", "zip", "country", "latitude", "longitude"],
+            "additionalProperties": false,
+            "properties": {
+              "facility": {"$ref": "#/$defs/str"},
+              "status": {"$ref": "#/$defs/str"},
+              "city": {"$ref": "#/$defs/str"},
+              "state": {"$ref": "#/$defs/str"},
+              "zip": {"$ref": "#/$defs/str"},
+              "country": {"$ref": "#/$defs/str"},
+              "latitude": {"$ref": "#/$defs/num"},
+              "longitude": {"$ref": "#/$defs/num"}
+            }
+          }
+        },
+        "countries": {"$ref": "#/$defs/strings", "description": "Distinct site countries, sorted"},
+        "brief_summary": {"$ref": "#/$defs/str"},
+        "detailed_description": {"$ref": "#/$defs/str"},
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pmid", "type", "citation"],
+            "additionalProperties": false,
+            "properties": {
+              "pmid": {"$ref": "#/$defs/str"},
+              "type": {"$ref": "#/$defs/str", "description": "BACKGROUND, RESULT or DERIVED"},
+              "citation": {"$ref": "#/$defs/str"}
+            }
+          }
+        },
+        "documents": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "type", "label", "date", "has_protocol", "has_sap", "has_icf", "filename", "size", "url", "path"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "type": {"$ref": "#/$defs/str", "description": "e.g. Prot, SAP, ICF, Prot_SAP, Prot_SAP_ICF"},
+              "label": {"$ref": "#/$defs/str"},
+              "date": {"$ref": "#/$defs/date"},
+              "has_protocol": {"type": "boolean"},
+              "has_sap": {"type": "boolean"},
+              "has_icf": {"type": "boolean"},
+              "filename": {"type": "string"},
+              "size": {"$ref": "#/$defs/int"},
+              "url": {"type": "string"},
+              "path": {"$ref": "#/$defs/str", "description": "Local file, set by --download-documents"}
+            }
+          }
+        },
+        "is_fda_regulated_drug": {"$ref": "#/$defs/bool"},
+        "is_fda_regulated_device": {"$ref": "#/$defs/bool"},
+        "ipd_sharing": {"$ref": "#/$defs/str", "description": "Plan to share individual participant data: YES, NO, UNDECIDED"}
+      }
+    }
+  }
+}
