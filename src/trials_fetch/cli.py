@@ -427,6 +427,8 @@ max_results = 1000
 
 # Fetch specific studies instead of searching (IDs and/or files listing them)
 #nct_ids = NCT04280705, NCT00000620
+# Or convert studies saved earlier with raw = yes (or trials-fetch 0.1 JSON), without the network
+#from_raw = raw_studies.jsonl
 
 # Output file; the extension (.json, .jsonl, .csv, .sqlite) selects the format unless format is set
 output_file = trials.json

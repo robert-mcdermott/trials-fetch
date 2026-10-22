@@ -166,4 +166,4 @@ For SQLite, see the tables and example queries in [reference.md](reference.md). 
 - `--max-results` defaults to 1000; mention it when `search_info.truncated` is true.
 - Normalized records don't include the results section; use `--raw --fields ResultsSection`.
 - `--days`/`--date-from` can't be combined; `--since-last-run` can't be used with `--date-from` or `--nct-ids`; `--raw` works only with JSON/JSONL; `--output -` can't be combined with SQLite, `--merge` or `--resume`.
-- Don't run many fetches in parallel: ClinicalTrials.gov allows about 50 requests per minute per client.
+- Don't run many fetches in parallel: they share ClinicalTrials.gov's per-IP rate limit (commonly cited as about 50 requests per minute).

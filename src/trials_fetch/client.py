@@ -60,7 +60,7 @@ class TrialsClient:
     page_size = PAGE_SIZE_LIMIT
     id_batch_size = 100
     page_attempts = 2
-    # The API limits each client to about 50 requests per minute.
+    # Stay under the API's per-IP rate limit, which isn't published but is commonly cited as about 50/minute.
     min_interval = 1.2
 
     def __init__(self, session: requests.Session | None = None, timeout: float = 120, base_url: str = API_URL):

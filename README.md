@@ -107,7 +107,7 @@ Many dates are estimates for trials that haven't reached them (`start_date_type`
 - `--resume` continues an interrupted run, skipping NCT IDs already in the output and appending the rest (jsonl, csv, sqlite, json).
 - `--summary FILE` writes the run's `search_info` as JSON (`-` for stdout), which is handy for orchestration tools.
 
-Progress and diagnostics go to stderr. The human-readable listing goes to stdout unless `-q` is given or the data itself is written to stdout.
+Progress and diagnostics go to stderr (`-q` for warnings and errors only, `-v` for debug output). The human-readable listing goes to stdout unless `-q` is given or the data itself is written to stdout.
 
 ### Exit codes
 | Code | Meaning |
@@ -279,7 +279,7 @@ phases =
 max_results = all
 output_file = gbm.sqlite
 ```
-Unknown keys are reported, so typos don't go unnoticed. Command-line options override the config file.
+Run it with `uv run trials-fetch --config my_config.ini`. Unknown keys are reported, so typos don't go unnoticed. Command-line options override the config file, e.g. `--config my_config.ini --country Canada`.
 
 ## Library use
 ```python
@@ -364,7 +364,7 @@ Ask in plain language, and the agent loads the skill when the request matches it
 You can also invoke it by name: `/trials-fetch` in Claude Code and Devin, or `$trials-fetch` in Codex. For an agent without skill support, point it at the file instead, e.g. "Read `skills/trials-fetch/SKILL.md` and follow it to find trials on ...".
 
 ## Notes
-- No API key is needed. ClinicalTrials.gov limits each client to about 50 requests per minute; trials-fetch paces its requests and retries rate-limit (429) and server (5xx) errors with backoff. Each request returns up to 1,000 trials, so even large collections take few requests.
+- No API key is needed. ClinicalTrials.gov doesn't publish a firm rate limit (about 50 requests per minute per IP address is the commonly cited figure), so trials-fetch paces its requests below that and retries rate-limit (429) and server (5xx) errors with backoff. Each request returns up to 1,000 trials, so even large collections take few requests.
 - ClinicalTrials.gov refreshes its data once a day; `search_info.data_timestamp` says when.
 - Records are as submitted by sponsors, so values vary in spelling and completeness (e.g. drug names, outcome wording). MeSH terms (`condition_mesh`, `intervention_mesh`) are the standardized versions.
 - Normalized records leave out the results section (outcome data, adverse events, participant flow). Use `--raw` (optionally with `--fields ResultsSection`) to get it.
